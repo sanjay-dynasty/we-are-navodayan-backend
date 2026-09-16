@@ -1,0 +1,38 @@
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# Java
+*.class
+*.log
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Spring Boot
+spring.log
+
+# Test
+surefire-reports/
+failsafe-reports/
+
+# Build
+out/
+
+# Temporary
+*.tmp
+*.temp
