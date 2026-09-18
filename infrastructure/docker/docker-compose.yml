@@ -1,0 +1,26 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: we-are-navodayan-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: navodayan
+      POSTGRES_PASSWORD: navodayan_local
+      POSTGRES_DB: postgres
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U navodayan -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

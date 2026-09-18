@@ -1,0 +1,19 @@
+CREATE DATABASE auth_db;
+CREATE DATABASE user_db;
+CREATE DATABASE jnv_db;
+CREATE DATABASE alumni_db;
+CREATE DATABASE community_db;
+CREATE DATABASE opportunity_db;
+CREATE DATABASE mentorship_db;
+CREATE DATABASE event_db;
+CREATE DATABASE notification_db;
+
+GRANT ALL PRIVILEGES ON DATABASE auth_db TO navodayan;
+GRANT ALL PRIVILEGES ON DATABASE user_db TO navodayan;
+GRANT ALL PRIVILEGES ON DATABASE jnv_db TO navodayan;
+GRANT ALL PRIVILEGES ON DATABASE alumni_db TO navodayan;
+GRANT ALL PRIVILEGES ON DATABASE community_db TO navodayan;
+GRANT ALL PRIVILEGES ON DATABASE opportunity_db TO navodayan;
+GRANT ALL PRIVILEGES ON DATABASE mentorship_db TO navodayan;
+GRANT ALL PRIVILEGES ON DATABASE event_db TO navodayan;
+GRANT ALL PRIVILEGES ON DATABASE notification_db TO navodayan;
