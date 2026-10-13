@@ -1,0 +1,12 @@
+CREATE TABLE jnvs (
+    id UUID PRIMARY KEY,
+    school_code VARCHAR(30) NOT NULL UNIQUE,
+    school_name VARCHAR(200) NOT NULL,
+    state VARCHAR(100) NOT NULL,
+    district VARCHAR(100) NOT NULL,
+    address VARCHAR(500),
+    pin_code VARCHAR(10),
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
