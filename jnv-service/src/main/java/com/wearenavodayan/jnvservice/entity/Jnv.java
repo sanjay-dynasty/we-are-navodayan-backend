@@ -47,7 +47,7 @@ public class Jnv {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    protected Jnv() {
+    public Jnv() {
     }
 
     @PrePersist
