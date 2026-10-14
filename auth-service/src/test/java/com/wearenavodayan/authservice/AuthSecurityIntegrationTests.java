@@ -1,5 +1,9 @@
 package com.wearenavodayan.authservice;
 
+import com.wearenavodayan.authservice.client.UserServiceClient;
+
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
 import java.time.Instant;
 import java.util.List;
 
@@ -28,6 +32,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 class AuthSecurityIntegrationTests {
+    @MockitoBean
+    private UserServiceClient userServiceClient;
 
         @Autowired
         private MockMvc mockMvc;

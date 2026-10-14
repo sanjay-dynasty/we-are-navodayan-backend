@@ -1,10 +1,13 @@
 package com.wearenavodayan.authservice.service;
 
+import com.wearenavodayan.authservice.client.UserServiceClient;
+import com.wearenavodayan.authservice.dto.internal.InternalProfileCreateRequest;
 import com.wearenavodayan.authservice.dto.request.RegistrationRequest;
 import com.wearenavodayan.authservice.dto.response.RegisteredUserResponse;
 import com.wearenavodayan.authservice.entity.UserAccount;
 import com.wearenavodayan.authservice.exception.DuplicateEmailException;
 import com.wearenavodayan.authservice.repository.UserAccountRepository;
+
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -17,12 +20,15 @@ public class AuthRegistrationService {
 
     private final UserAccountRepository userAccountRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UserServiceClient userServiceClient;
 
     public AuthRegistrationService(
             UserAccountRepository userAccountRepository,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            UserServiceClient userServiceClient) {
         this.userAccountRepository = userAccountRepository;
         this.passwordEncoder = passwordEncoder;
+        this.userServiceClient = userServiceClient;
     }
 
     @Transactional
@@ -41,15 +47,18 @@ public class AuthRegistrationService {
         try {
             UserAccount saved = userAccountRepository.saveAndFlush(account);
 
+            userServiceClient.createProfile(
+                    new InternalProfileCreateRequest(
+                            saved.getId(),
+                            saved.getFullName()));
+
             return new RegisteredUserResponse(
-                saved.getId(),
-                saved.getFullName(),
-                saved.getEmail(),
-                saved.getRole(),
-                saved.getCreatedAt()
-            );
+                    saved.getId(),
+                    saved.getFullName(),
+                    saved.getEmail(),
+                    saved.getRole(),
+                    saved.getCreatedAt());
         } catch (DataIntegrityViolationException exception) {
-            // Also handle a concurrent registration for the same email.
             throw new DuplicateEmailException();
         }
     }
