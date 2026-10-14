@@ -21,6 +21,14 @@ public class UserProfileService {
 
     @Transactional
     public UserProfile create(UserProfile userProfile) {
+        validateProfile(userProfile);
+
+        if (userProfileRepository.existsByAuthUserId(
+                userProfile.getAuthUserId())) {
+            throw new IllegalStateException(
+                    "A profile already exists for this user");
+        }
+
         return userProfileRepository.save(userProfile);
     }
 
@@ -28,18 +36,26 @@ public class UserProfileService {
         return userProfileRepository.findById(id)
                 .orElseThrow(() ->
                         new EntityNotFoundException(
-                                "User profile not found: " + id));
+                                "User profile not found"));
     }
 
     public UserProfile getByAuthUserId(UUID authUserId) {
+        if (authUserId == null) {
+            throw new IllegalArgumentException(
+                    "Authenticated user ID is required");
+        }
+
         return userProfileRepository.findByAuthUserId(authUserId)
                 .orElseThrow(() ->
                         new EntityNotFoundException(
-                                "User profile not found for auth user: "
-                                        + authUserId));
+                                "User profile not found"));
     }
 
     public List<UserProfile> getByJnvId(UUID jnvId) {
+        if (jnvId == null) {
+            throw new IllegalArgumentException("JNV ID is required");
+        }
+
         return userProfileRepository.findByJnvId(jnvId);
     }
 
@@ -49,15 +65,28 @@ public class UserProfileService {
 
     @Transactional
     public UserProfile update(UUID id, UserProfile updatedProfile) {
+        if (id == null) {
+            throw new IllegalArgumentException("Profile ID is required");
+        }
+
+        validateProfile(updatedProfile);
+
         UserProfile existingProfile = getById(id);
 
-        existingProfile.setAuthUserId(updatedProfile.getAuthUserId());
-        existingProfile.setFullName(updatedProfile.getFullName());
-        existingProfile.setBio(updatedProfile.getBio());
+        // Account ownership cannot be changed through profile updates.
+        if (!existingProfile.getAuthUserId()
+                .equals(updatedProfile.getAuthUserId())) {
+            throw new IllegalArgumentException(
+                    "Profile ownership cannot be changed");
+        }
+
+        existingProfile.setFullName(updatedProfile.getFullName().trim());
+        existingProfile.setBio(normalizeOptionalText(
+                updatedProfile.getBio()));
         existingProfile.setBatchYear(updatedProfile.getBatchYear());
         existingProfile.setJnvId(updatedProfile.getJnvId());
         existingProfile.setProfileImageUrl(
-                updatedProfile.getProfileImageUrl());
+                normalizeOptionalText(updatedProfile.getProfileImageUrl()));
 
         return userProfileRepository.save(existingProfile);
     }
@@ -69,6 +98,60 @@ public class UserProfileService {
     }
 
     public boolean existsByAuthUserId(UUID authUserId) {
+        if (authUserId == null) {
+            return false;
+        }
+
         return userProfileRepository.existsByAuthUserId(authUserId);
+    }
+
+    private void validateProfile(UserProfile profile) {
+        if (profile == null) {
+            throw new IllegalArgumentException(
+                    "Profile request is required");
+        }
+
+        if (profile.getAuthUserId() == null) {
+            throw new IllegalArgumentException(
+                    "Authenticated user ID is required");
+        }
+
+        if (profile.getFullName() == null
+                || profile.getFullName().isBlank()) {
+            throw new IllegalArgumentException(
+                    "Full name is required");
+        }
+
+        if (profile.getFullName().trim().length() > 150) {
+            throw new IllegalArgumentException(
+                    "Full name must not exceed 150 characters");
+        }
+
+        if (profile.getBio() != null
+                && profile.getBio().length() > 1000) {
+            throw new IllegalArgumentException(
+                    "Bio must not exceed 1000 characters");
+        }
+
+        if (profile.getBatchYear() != null
+                && (profile.getBatchYear() < 1900
+                || profile.getBatchYear() > 2200)) {
+            throw new IllegalArgumentException(
+                    "Batch year must be between 1900 and 2200");
+        }
+
+        if (profile.getProfileImageUrl() != null
+                && profile.getProfileImageUrl().length() > 1000) {
+            throw new IllegalArgumentException(
+                    "Profile image URL must not exceed 1000 characters");
+        }
+    }
+
+    private String normalizeOptionalText(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        return value.trim();
     }
 }
