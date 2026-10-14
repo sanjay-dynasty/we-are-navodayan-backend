@@ -29,163 +29,210 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class AuthSecurityIntegrationTests {
 
-    @Autowired
-    private MockMvc mockMvc;
+        @Autowired
+        private MockMvc mockMvc;
 
-    @Autowired
-    private JwtEncoder jwtEncoder;
+        @Autowired
+        private JwtEncoder jwtEncoder;
 
-    @Autowired
-    private UserAccountRepository userAccountRepository;
+        @Autowired
+        private UserAccountRepository userAccountRepository;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+        @Autowired
+        private PasswordEncoder passwordEncoder;
 
-    private String validToken;
+        private String validToken;
 
-    @BeforeEach
-    void setUp() {
-        userAccountRepository.deleteAll();
+        @BeforeEach
+        void setUp() {
+                userAccountRepository.deleteAll();
 
-        UserAccount account = new UserAccount();
-        account.setEmail("security.test@example.com");
-        account.setFullName("Security Test");
-        account.setPasswordHash(passwordEncoder.encode("SecurePassword123!"));
-        UserAccount saved = userAccountRepository.saveAndFlush(account);
+                UserAccount account = new UserAccount();
+                account.setEmail("security.test@example.com");
+                account.setFullName("Security Test");
+                account.setPasswordHash(passwordEncoder.encode("SecurePassword123!"));
+                UserAccount saved = userAccountRepository.saveAndFlush(account);
 
-        Instant now = Instant.now();
+                Instant now = Instant.now();
 
-        JwtClaimsSet claims = JwtClaimsSet.builder()
-                .issuer("we-are-navodayan-auth")
-                .subject(saved.getId().toString())
-                .audience(List.of("we-are-navodayan-api"))
-                .issuedAt(now)
-                .expiresAt(now.plusSeconds(900))
-                .id("security-test-token")
-                .claim("role", "USER")
-                .build();
+                JwtClaimsSet claims = JwtClaimsSet.builder()
+                                .issuer("we-are-navodayan-auth")
+                                .subject(saved.getId().toString())
+                                .audience(List.of("we-are-navodayan-api"))
+                                .issuedAt(now)
+                                .expiresAt(now.plusSeconds(900))
+                                .id("security-test-token")
+                                .claim("role", "USER")
+                                .build();
 
-        validToken = jwtEncoder.encode(
-                JwtEncoderParameters.from(
-                        JwsHeader.with(MacAlgorithm.HS256).build(),
-                        claims
-                )
-        ).getTokenValue();
-    }
+                validToken = jwtEncoder.encode(
+                                JwtEncoderParameters.from(
+                                                JwsHeader.with(MacAlgorithm.HS256).build(),
+                                                claims))
+                                .getTokenValue();
+        }
 
-    @Test
-    void protectedEndpointRejectsMissingToken() throws Exception {
-        mockMvc.perform(get("/api/v1/auth/me"))
-                .andExpect(status().isUnauthorized());
-    }
+        @Test
+        void protectedEndpointRejectsMissingToken() throws Exception {
+                mockMvc.perform(get("/api/v1/auth/me"))
+                                .andExpect(status().isUnauthorized());
+        }
 
-    @Test
-    void protectedEndpointAcceptsValidToken() throws Exception {
-        mockMvc.perform(get("/api/v1/auth/me")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + validToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.userId").isNotEmpty())
-                .andExpect(jsonPath("$.role").value("USER"));
-    }
+        @Test
+        void protectedEndpointAcceptsValidToken() throws Exception {
+                mockMvc.perform(get("/api/v1/auth/me")
+                                .header(HttpHeaders.AUTHORIZATION, "Bearer " + validToken))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.userId").isNotEmpty())
+                                .andExpect(jsonPath("$.role").value("USER"));
+        }
 
-    @Test
-    void protectedEndpointRejectsInvalidToken() throws Exception {
-        mockMvc.perform(get("/api/v1/auth/me")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer invalid-token"))
-                .andExpect(status().isUnauthorized());
-    }
+        @Test
+        void protectedEndpointRejectsInvalidToken() throws Exception {
+                mockMvc.perform(get("/api/v1/auth/me")
+                                .header(HttpHeaders.AUTHORIZATION, "Bearer invalid-token"))
+                                .andExpect(status().isUnauthorized());
+        }
 
-    @Test
-    void protectedEndpointRejectsExpiredToken() throws Exception {
-        Instant now = Instant.now();
+        @Test
+        void protectedEndpointRejectsExpiredToken() throws Exception {
+                Instant now = Instant.now();
 
-        JwtClaimsSet expiredClaims = JwtClaimsSet.builder()
-                .issuer("we-are-navodayan-auth")
-                .subject("expired-token-user")
-                .audience(List.of("we-are-navodayan-api"))
-                .issuedAt(now.minusSeconds(120))
-                .expiresAt(now.minusSeconds(60))
-                .id("expired-security-test-token")
-                .claim("role", "USER")
-                .build();
+                JwtClaimsSet expiredClaims = JwtClaimsSet.builder()
+                                .issuer("we-are-navodayan-auth")
+                                .subject("expired-token-user")
+                                .audience(List.of("we-are-navodayan-api"))
+                                .issuedAt(now.minusSeconds(120))
+                                .expiresAt(now.minusSeconds(60))
+                                .id("expired-security-test-token")
+                                .claim("role", "USER")
+                                .build();
 
-        String expiredToken = jwtEncoder.encode(
-                JwtEncoderParameters.from(
-                        JwsHeader.with(MacAlgorithm.HS256).build(),
-                        expiredClaims
-                )
-        ).getTokenValue();
+                String expiredToken = jwtEncoder.encode(
+                                JwtEncoderParameters.from(
+                                                JwsHeader.with(MacAlgorithm.HS256).build(),
+                                                expiredClaims))
+                                .getTokenValue();
 
-        mockMvc.perform(get("/api/v1/auth/me")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + expiredToken))
-                .andExpect(status().isUnauthorized());
-    }
+                mockMvc.perform(get("/api/v1/auth/me")
+                                .header(HttpHeaders.AUTHORIZATION, "Bearer " + expiredToken))
+                                .andExpect(status().isUnauthorized());
+        }
 
-    @Test
-    void protectedEndpointRejectsTokenWithWrongAudience() throws Exception {
-        Instant now = Instant.now();
+        @Test
+        void protectedEndpointRejectsTokenWithWrongAudience() throws Exception {
+                Instant now = Instant.now();
 
-        JwtClaimsSet claims = JwtClaimsSet.builder()
-                .issuer("we-are-navodayan-auth")
-                .subject("wrong-audience-user")
-                .audience(List.of("another-api"))
-                .issuedAt(now)
-                .expiresAt(now.plusSeconds(900))
-                .id("wrong-audience-security-test-token")
-                .claim("role", "USER")
-                .build();
+                JwtClaimsSet claims = JwtClaimsSet.builder()
+                                .issuer("we-are-navodayan-auth")
+                                .subject("wrong-audience-user")
+                                .audience(List.of("another-api"))
+                                .issuedAt(now)
+                                .expiresAt(now.plusSeconds(900))
+                                .id("wrong-audience-security-test-token")
+                                .claim("role", "USER")
+                                .build();
 
-        String wrongAudienceToken = jwtEncoder.encode(
-                JwtEncoderParameters.from(
-                        JwsHeader.with(MacAlgorithm.HS256).build(),
-                        claims
-                )
-        ).getTokenValue();
+                String wrongAudienceToken = jwtEncoder.encode(
+                                JwtEncoderParameters.from(
+                                                JwsHeader.with(MacAlgorithm.HS256).build(),
+                                                claims))
+                                .getTokenValue();
 
-        mockMvc.perform(get("/api/v1/auth/me")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + wrongAudienceToken))
-                .andExpect(status().isUnauthorized());
-    }
+                mockMvc.perform(get("/api/v1/auth/me")
+                                .header(HttpHeaders.AUTHORIZATION, "Bearer " + wrongAudienceToken))
+                                .andExpect(status().isUnauthorized());
+        }
 
-    @Test
-    void protectedEndpointRejectsTokenWithWrongIssuer() throws Exception {
-        Instant now = Instant.now();
+        @Test
+        void protectedEndpointRejectsTokenWithWrongIssuer() throws Exception {
+                Instant now = Instant.now();
 
-        JwtClaimsSet claims = JwtClaimsSet.builder()
-                .issuer("another-auth-service")
-                .subject("wrong-issuer-user")
-                .audience(List.of("we-are-navodayan-api"))
-                .issuedAt(now)
-                .expiresAt(now.plusSeconds(900))
-                .id("wrong-issuer-security-test-token")
-                .claim("role", "USER")
-                .build();
+                JwtClaimsSet claims = JwtClaimsSet.builder()
+                                .issuer("another-auth-service")
+                                .subject("wrong-issuer-user")
+                                .audience(List.of("we-are-navodayan-api"))
+                                .issuedAt(now)
+                                .expiresAt(now.plusSeconds(900))
+                                .id("wrong-issuer-security-test-token")
+                                .claim("role", "USER")
+                                .build();
 
-        String wrongIssuerToken = jwtEncoder.encode(
-                JwtEncoderParameters.from(
-                        JwsHeader.with(MacAlgorithm.HS256).build(),
-                        claims
-                )
-        ).getTokenValue();
+                String wrongIssuerToken = jwtEncoder.encode(
+                                JwtEncoderParameters.from(
+                                                JwsHeader.with(MacAlgorithm.HS256).build(),
+                                                claims))
+                                .getTokenValue();
 
-        mockMvc.perform(get("/api/v1/auth/me")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + wrongIssuerToken))
-                .andExpect(status().isUnauthorized());
-    }
+                mockMvc.perform(get("/api/v1/auth/me")
+                                .header(HttpHeaders.AUTHORIZATION, "Bearer " + wrongIssuerToken))
+                                .andExpect(status().isUnauthorized());
+        }
 
-    @Test
-    void loginEndpointRemainsPublic() throws Exception {
-        String body = """
-                {
-                  "email": "security.test@example.com",
-                  "password": "SecurePassword123!"
-                }
-                """;
+        @Test
+        void loginEndpointRemainsPublic() throws Exception {
+                String body = """
+                                {
+                                  "email": "security.test@example.com",
+                                  "password": "SecurePassword123!"
+                                }
+                                """;
 
-        mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.accessToken").isNotEmpty());
-    }
+                mockMvc.perform(post("/api/v1/auth/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.accessToken").isNotEmpty());
+        }
+
+        @Test
+        void registrationEndpointRemainsPublic() throws Exception {
+                String email = "public-registration-"
+                                + java.util.UUID.randomUUID()
+                                + "@example.com";
+
+                String body = """
+                                {
+                                  "fullName": "Public Registration Test",
+                                  "email": "%s",
+                                  "password": "SecurePassword123!"
+                                }
+                                """.formatted(email);
+
+                mockMvc.perform(post("/api/v1/auth/register")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body))
+                                .andExpect(status().isCreated());
+        }
+
+        @Test
+        void refreshEndpointRemainsPublicAndRejectsInvalidRefreshToken()
+                        throws Exception {
+                String body = """
+                                {
+                                  "refreshToken": "invalid-refresh-token"
+                                }
+                                """;
+
+                mockMvc.perform(post("/api/v1/auth/refresh")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body))
+                                .andExpect(status().isUnauthorized())
+                                .andExpect(jsonPath("$.code")
+                                                .value("INVALID_REFRESH_TOKEN"));
+        }
+
+        @Test
+        void refreshEndpointRejectsBlankRefreshToken() throws Exception {
+                String body = """
+                                {
+                                  "refreshToken": " "
+                                }
+                                """;
+
+                mockMvc.perform(post("/api/v1/auth/refresh")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body))
+                                .andExpect(status().isBadRequest());
+        }
 }
