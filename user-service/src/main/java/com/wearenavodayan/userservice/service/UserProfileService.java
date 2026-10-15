@@ -36,6 +36,7 @@ public class UserProfileService {
                     "A profile already exists for this user");
         }
 
+        normalizeProfile(userProfile);
         return userProfileRepository.save(userProfile);
     }
 
@@ -90,6 +91,18 @@ public class UserProfileService {
         existingProfile.setJnvId(updatedProfile.getJnvId());
         existingProfile.setProfileImageUrl(
                 normalizeOptionalText(updatedProfile.getProfileImageUrl()));
+        existingProfile.setProfession(
+                normalizeOptionalText(updatedProfile.getProfession()));
+        existingProfile.setOrganization(
+                normalizeOptionalText(updatedProfile.getOrganization()));
+        existingProfile.setJobTitle(
+                normalizeOptionalText(updatedProfile.getJobTitle()));
+        existingProfile.setCurrentCity(
+                normalizeOptionalText(updatedProfile.getCurrentCity()));
+        existingProfile.setCurrentState(
+                normalizeOptionalText(updatedProfile.getCurrentState()));
+        existingProfile.setCountry(
+                normalizeOptionalText(updatedProfile.getCountry()));
 
         return userProfileRepository.save(existingProfile);
     }
@@ -119,32 +132,22 @@ public class UserProfileService {
                     "Authenticated user ID is required");
         }
 
-        if (profile.getFullName() == null
-                || profile.getFullName().isBlank()) {
-            throw new IllegalArgumentException("Full name is required");
-        }
-
-        if (profile.getFullName().trim().length() > 150) {
-            throw new IllegalArgumentException(
-                    "Full name must not exceed 150 characters");
-        }
-
-        if (profile.getBio() != null && profile.getBio().length() > 1000) {
-            throw new IllegalArgumentException(
-                    "Bio must not exceed 1000 characters");
-        }
+        validateRequiredText(profile.getFullName(), 150, "Full name", true);
+        validateOptionalText(profile.getBio(), 1000, "Bio");
+        validateOptionalText(
+                profile.getProfileImageUrl(), 1000, "Profile image URL");
+        validateOptionalText(profile.getProfession(), 100, "Profession");
+        validateOptionalText(profile.getOrganization(), 150, "Organization");
+        validateOptionalText(profile.getJobTitle(), 150, "Job title");
+        validateOptionalText(profile.getCurrentCity(), 100, "Current city");
+        validateOptionalText(profile.getCurrentState(), 100, "Current state");
+        validateOptionalText(profile.getCountry(), 100, "Country");
 
         if (profile.getBatchYear() != null
                 && (profile.getBatchYear() < 1900
                 || profile.getBatchYear() > 2200)) {
             throw new IllegalArgumentException(
                     "Batch year must be between 1900 and 2200");
-        }
-
-        if (profile.getProfileImageUrl() != null
-                && profile.getProfileImageUrl().length() > 1000) {
-            throw new IllegalArgumentException(
-                    "Profile image URL must not exceed 1000 characters");
         }
 
         if (profile.getJnvId() != null) {
@@ -162,6 +165,40 @@ public class UserProfileService {
                         "JNV not found: " + profile.getJnvId());
             }
         }
+    }
+
+    private void validateRequiredText(
+            String value, int maxLength, String fieldName, boolean required) {
+        if (required && (value == null || value.isBlank())) {
+            throw new IllegalArgumentException(fieldName + " is required");
+        }
+
+        if (value != null && value.trim().length() > maxLength) {
+            throw new IllegalArgumentException(
+                    fieldName + " must not exceed " + maxLength
+                            + " characters");
+        }
+    }
+
+    private void validateOptionalText(
+            String value, int maxLength, String fieldName) {
+        validateRequiredText(value, maxLength, fieldName, false);
+    }
+
+    private void normalizeProfile(UserProfile profile) {
+        profile.setFullName(profile.getFullName().trim());
+        profile.setBio(normalizeOptionalText(profile.getBio()));
+        profile.setProfileImageUrl(
+                normalizeOptionalText(profile.getProfileImageUrl()));
+        profile.setProfession(normalizeOptionalText(profile.getProfession()));
+        profile.setOrganization(
+                normalizeOptionalText(profile.getOrganization()));
+        profile.setJobTitle(normalizeOptionalText(profile.getJobTitle()));
+        profile.setCurrentCity(
+                normalizeOptionalText(profile.getCurrentCity()));
+        profile.setCurrentState(
+                normalizeOptionalText(profile.getCurrentState()));
+        profile.setCountry(normalizeOptionalText(profile.getCountry()));
     }
 
     private String normalizeOptionalText(String value) {

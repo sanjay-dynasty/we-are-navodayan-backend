@@ -83,6 +83,31 @@ class UserProfileTransactionTests {
         }
 
         @Test
+        void shouldPersistAndRetrieveProfessionAndLocationDetails() {
+                mockValidJnv();
+
+                UUID authUserId = UUID.randomUUID();
+                UserProfile profile = createProfile(authUserId);
+
+                profile.setProfession("Software Engineer");
+                profile.setOrganization("EPAM Systems");
+                profile.setJobTitle("Software Engineer A2");
+                profile.setCurrentCity("Pune");
+                profile.setCurrentState("Maharashtra");
+                profile.setCountry("India");
+
+                UserProfile saved = userProfileService.create(profile);
+                UserProfile retrieved = userProfileService.getById(saved.getId());
+
+                assertThat(retrieved.getProfession()).isEqualTo("Software Engineer");
+                assertThat(retrieved.getOrganization()).isEqualTo("EPAM Systems");
+                assertThat(retrieved.getJobTitle()).isEqualTo("Software Engineer A2");
+                assertThat(retrieved.getCurrentCity()).isEqualTo("Pune");
+                assertThat(retrieved.getCurrentState()).isEqualTo("Maharashtra");
+                assertThat(retrieved.getCountry()).isEqualTo("India");
+        }
+
+        @Test
         void shouldDeclareReadOnlyTransactionsForReadMethods()
                         throws NoSuchMethodException {
                 AnnotationTransactionAttributeSource source = new AnnotationTransactionAttributeSource();

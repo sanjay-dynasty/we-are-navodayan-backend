@@ -38,6 +38,24 @@ public class UserProfile {
     @Column(name = "profile_image_url", length = 1000)
     private String profileImageUrl;
 
+    @Column(length = 100)
+    private String profession;
+
+    @Column(length = 150)
+    private String organization;
+
+    @Column(name = "job_title", length = 150)
+    private String jobTitle;
+
+    @Column(name = "current_city", length = 100)
+    private String currentCity;
+
+    @Column(name = "current_state", length = 100)
+    private String currentState;
+
+    @Column(length = 100)
+    private String country;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -109,6 +127,54 @@ public class UserProfile {
 
     public void setProfileImageUrl(String profileImageUrl) {
         this.profileImageUrl = profileImageUrl;
+    }
+
+    public String getProfession() {
+        return profession;
+    }
+
+    public void setProfession(String profession) {
+        this.profession = profession;
+    }
+
+    public String getOrganization() {
+        return organization;
+    }
+
+    public void setOrganization(String organization) {
+        this.organization = organization;
+    }
+
+    public String getJobTitle() {
+        return jobTitle;
+    }
+
+    public void setJobTitle(String jobTitle) {
+        this.jobTitle = jobTitle;
+    }
+
+    public String getCurrentCity() {
+        return currentCity;
+    }
+
+    public void setCurrentCity(String currentCity) {
+        this.currentCity = currentCity;
+    }
+
+    public String getCurrentState() {
+        return currentState;
+    }
+
+    public void setCurrentState(String currentState) {
+        this.currentState = currentState;
+    }
+
+    public String getCountry() {
+        return country;
+    }
+
+    public void setCountry(String country) {
+        this.country = country;
     }
 
     public Instant getCreatedAt() {

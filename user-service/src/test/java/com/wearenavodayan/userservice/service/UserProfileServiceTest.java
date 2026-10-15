@@ -19,6 +19,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
@@ -185,6 +186,126 @@ class UserProfileServiceTest {
         assertThatThrownBy(() -> service.getById(profileId))
                 .isInstanceOf(EntityNotFoundException.class)
                 .hasMessage("User profile not found");
+    }
+
+    @Test
+    void shouldCreateProfileWithProfessionAndLocationDetails() {
+        UUID authUserId = UUID.randomUUID();
+        UserProfile profile = validProfile(authUserId);
+
+        profile.setProfession("Software Engineer");
+        profile.setOrganization("EPAM Systems");
+        profile.setJobTitle("Software Engineer A2");
+        profile.setCurrentCity("Pune");
+        profile.setCurrentState("Maharashtra");
+        profile.setCountry("India");
+
+        when(repository.existsByAuthUserId(authUserId)).thenReturn(false);
+        when(repository.save(profile)).thenReturn(profile);
+
+        UserProfile result = service.create(profile);
+
+        assertThat(result.getProfession()).isEqualTo("Software Engineer");
+        assertThat(result.getOrganization()).isEqualTo("EPAM Systems");
+        assertThat(result.getJobTitle()).isEqualTo("Software Engineer A2");
+        assertThat(result.getCurrentCity()).isEqualTo("Pune");
+        assertThat(result.getCurrentState()).isEqualTo("Maharashtra");
+        assertThat(result.getCountry()).isEqualTo("India");
+
+        verify(repository).save(profile);
+    }
+
+    @Test
+    void shouldNormalizeProfessionAndLocationFieldsWhenCreatingProfile() {
+        UUID authUserId = UUID.randomUUID();
+        UserProfile profile = validProfile(authUserId);
+
+        profile.setProfession("  Software Engineer  ");
+        profile.setOrganization("  EPAM Systems  ");
+        profile.setJobTitle("  Backend Developer  ");
+        profile.setCurrentCity("  Pune  ");
+        profile.setCurrentState("  Maharashtra  ");
+        profile.setCountry("  India  ");
+
+        when(repository.existsByAuthUserId(authUserId)).thenReturn(false);
+        when(repository.save(profile)).thenReturn(profile);
+
+        service.create(profile);
+
+        assertThat(profile.getProfession()).isEqualTo("Software Engineer");
+        assertThat(profile.getOrganization()).isEqualTo("EPAM Systems");
+        assertThat(profile.getJobTitle()).isEqualTo("Backend Developer");
+        assertThat(profile.getCurrentCity()).isEqualTo("Pune");
+        assertThat(profile.getCurrentState()).isEqualTo("Maharashtra");
+        assertThat(profile.getCountry()).isEqualTo("India");
+    }
+
+    @Test
+    void shouldNormalizeBlankOptionalProfessionAndLocationFieldsToNull() {
+        UUID authUserId = UUID.randomUUID();
+        UserProfile profile = validProfile(authUserId);
+
+        profile.setProfession("  ");
+        profile.setOrganization("");
+        profile.setJobTitle(" ");
+        profile.setCurrentCity("  ");
+        profile.setCurrentState("");
+        profile.setCountry(" ");
+
+        when(repository.existsByAuthUserId(authUserId)).thenReturn(false);
+        when(repository.save(profile)).thenReturn(profile);
+
+        service.create(profile);
+
+        assertThat(profile.getProfession()).isNull();
+        assertThat(profile.getOrganization()).isNull();
+        assertThat(profile.getJobTitle()).isNull();
+        assertThat(profile.getCurrentCity()).isNull();
+        assertThat(profile.getCurrentState()).isNull();
+        assertThat(profile.getCountry()).isNull();
+    }
+
+    @Test
+    void shouldRejectProfessionExceedingMaximumLength() {
+        UserProfile profile = validProfile(UUID.randomUUID());
+        profile.setProfession("P".repeat(101));
+
+        assertThatThrownBy(() -> service.create(profile))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Profession must not exceed 100 characters");
+
+        verifyNoInteractions(repository);
+        verifyNoInteractions(jnvServiceClient);
+    }
+
+    @Test
+    void shouldUpdateProfessionAndLocationDetails() {
+        UUID profileId = UUID.randomUUID();
+        UUID authUserId = UUID.randomUUID();
+
+        UserProfile existing = validProfile(authUserId);
+        UserProfile update = validProfile(authUserId);
+
+        update.setProfession("Data Engineer");
+        update.setOrganization("Example Corp");
+        update.setJobTitle("Senior Engineer");
+        update.setCurrentCity("Bengaluru");
+        update.setCurrentState("Karnataka");
+        update.setCountry("India");
+
+        when(repository.findById(profileId)).thenReturn(Optional.of(existing));
+        when(repository.save(existing)).thenReturn(existing);
+
+        UserProfile result = service.update(profileId, update);
+
+        assertThat(result.getProfession()).isEqualTo("Data Engineer");
+        assertThat(result.getOrganization()).isEqualTo("Example Corp");
+        assertThat(result.getJobTitle()).isEqualTo("Senior Engineer");
+        assertThat(result.getCurrentCity()).isEqualTo("Bengaluru");
+        assertThat(result.getCurrentState()).isEqualTo("Karnataka");
+        assertThat(result.getCountry()).isEqualTo("India");
+
+        verify(repository).save(existing);
     }
 
     private UserProfile validProfile(UUID authUserId) {
