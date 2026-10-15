@@ -1,6 +1,10 @@
 package com.wearenavodayan.userservice.service;
 
+import com.wearenavodayan.userservice.client.JnvServiceClient;
+import com.wearenavodayan.userservice.dto.response.ApiResponse;
 import com.wearenavodayan.userservice.entity.UserProfile;
+import com.wearenavodayan.userservice.exception.JnvNotFoundException;
+import com.wearenavodayan.userservice.exception.JnvServiceClientException;
 import com.wearenavodayan.userservice.repository.UserProfileRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
@@ -14,17 +18,20 @@ import java.util.UUID;
 public class UserProfileService {
 
     private final UserProfileRepository userProfileRepository;
+    private final JnvServiceClient jnvServiceClient;
 
-    public UserProfileService(UserProfileRepository userProfileRepository) {
+    public UserProfileService(
+            UserProfileRepository userProfileRepository,
+            JnvServiceClient jnvServiceClient) {
         this.userProfileRepository = userProfileRepository;
+        this.jnvServiceClient = jnvServiceClient;
     }
 
     @Transactional
     public UserProfile create(UserProfile userProfile) {
         validateProfile(userProfile);
 
-        if (userProfileRepository.existsByAuthUserId(
-                userProfile.getAuthUserId())) {
+        if (userProfileRepository.existsByAuthUserId(userProfile.getAuthUserId())) {
             throw new IllegalStateException(
                     "A profile already exists for this user");
         }
@@ -35,8 +42,7 @@ public class UserProfileService {
     public UserProfile getById(UUID id) {
         return userProfileRepository.findById(id)
                 .orElseThrow(() ->
-                        new EntityNotFoundException(
-                                "User profile not found"));
+                        new EntityNotFoundException("User profile not found"));
     }
 
     public UserProfile getByAuthUserId(UUID authUserId) {
@@ -47,8 +53,7 @@ public class UserProfileService {
 
         return userProfileRepository.findByAuthUserId(authUserId)
                 .orElseThrow(() ->
-                        new EntityNotFoundException(
-                                "User profile not found"));
+                        new EntityNotFoundException("User profile not found"));
     }
 
     public List<UserProfile> getByJnvId(UUID jnvId) {
@@ -73,7 +78,6 @@ public class UserProfileService {
 
         UserProfile existingProfile = getById(id);
 
-        // Account ownership cannot be changed through profile updates.
         if (!existingProfile.getAuthUserId()
                 .equals(updatedProfile.getAuthUserId())) {
             throw new IllegalArgumentException(
@@ -81,8 +85,7 @@ public class UserProfileService {
         }
 
         existingProfile.setFullName(updatedProfile.getFullName().trim());
-        existingProfile.setBio(normalizeOptionalText(
-                updatedProfile.getBio()));
+        existingProfile.setBio(normalizeOptionalText(updatedProfile.getBio()));
         existingProfile.setBatchYear(updatedProfile.getBatchYear());
         existingProfile.setJnvId(updatedProfile.getJnvId());
         existingProfile.setProfileImageUrl(
@@ -118,8 +121,7 @@ public class UserProfileService {
 
         if (profile.getFullName() == null
                 || profile.getFullName().isBlank()) {
-            throw new IllegalArgumentException(
-                    "Full name is required");
+            throw new IllegalArgumentException("Full name is required");
         }
 
         if (profile.getFullName().trim().length() > 150) {
@@ -127,8 +129,7 @@ public class UserProfileService {
                     "Full name must not exceed 150 characters");
         }
 
-        if (profile.getBio() != null
-                && profile.getBio().length() > 1000) {
+        if (profile.getBio() != null && profile.getBio().length() > 1000) {
             throw new IllegalArgumentException(
                     "Bio must not exceed 1000 characters");
         }
@@ -145,13 +146,25 @@ public class UserProfileService {
             throw new IllegalArgumentException(
                     "Profile image URL must not exceed 1000 characters");
         }
+
+        if (profile.getJnvId() != null) {
+            try {
+                ApiResponse<Object> response =
+                        jnvServiceClient.getJnvById(
+                                profile.getJnvId().toString());
+
+                if (response == null || !response.success()) {
+                    throw new JnvServiceClientException(
+                            "JNV service returned an invalid response");
+                }
+            } catch (JnvNotFoundException ex) {
+                throw new EntityNotFoundException(
+                        "JNV not found: " + profile.getJnvId());
+            }
+        }
     }
 
     private String normalizeOptionalText(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-
-        return value.trim();
+        return value == null || value.isBlank() ? null : value.trim();
     }
 }

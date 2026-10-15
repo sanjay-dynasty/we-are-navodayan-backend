@@ -1,8 +1,13 @@
 package com.wearenavodayan.userservice.service;
 
+import com.wearenavodayan.userservice.client.JnvServiceClient;
+import com.wearenavodayan.userservice.dto.response.ApiResponse;
 import com.wearenavodayan.userservice.entity.UserProfile;
+import com.wearenavodayan.userservice.exception.JnvNotFoundException;
+import com.wearenavodayan.userservice.exception.JnvServiceClientException;
 import com.wearenavodayan.userservice.repository.UserProfileRepository;
 import jakarta.persistence.EntityNotFoundException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -14,6 +19,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -22,8 +28,18 @@ class UserProfileServiceTest {
     @Mock
     private UserProfileRepository repository;
 
+    @Mock
+    private JnvServiceClient jnvServiceClient;
+
     @InjectMocks
     private UserProfileService service;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(jnvServiceClient.getJnvById(anyString()))
+                .thenReturn(new ApiResponse<>(
+                        true, new Object(), "JNV retrieved successfully"));
+    }
 
     @Test
     void shouldCreateProfileWhenUserHasNoExistingProfile() {
@@ -42,7 +58,6 @@ class UserProfileServiceTest {
     @Test
     void shouldRejectDuplicateProfile() {
         UUID authUserId = UUID.randomUUID();
-
         when(repository.existsByAuthUserId(authUserId)).thenReturn(true);
 
         assertThatThrownBy(() -> service.create(validProfile(authUserId)))
@@ -62,6 +77,7 @@ class UserProfileServiceTest {
                 .hasMessage("Full name is required");
 
         verifyNoInteractions(repository);
+        verifyNoInteractions(jnvServiceClient);
     }
 
     @Test
@@ -74,6 +90,7 @@ class UserProfileServiceTest {
                 .hasMessage("Batch year must be between 1900 and 2200");
 
         verifyNoInteractions(repository);
+        verifyNoInteractions(jnvServiceClient);
     }
 
     @Test
@@ -85,6 +102,39 @@ class UserProfileServiceTest {
                 .hasMessage("Authenticated user ID is required");
 
         verifyNoInteractions(repository);
+        verifyNoInteractions(jnvServiceClient);
+    }
+
+    @Test
+    void shouldRejectUnknownJnv() {
+        UserProfile profile = validProfile(UUID.randomUUID());
+        String jnvId = profile.getJnvId().toString();
+
+        when(jnvServiceClient.getJnvById(jnvId))
+                .thenThrow(new JnvNotFoundException("JNV not found: " + jnvId));
+
+        assertThatThrownBy(() -> service.create(profile))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessage("JNV not found: " + jnvId);
+
+        verify(repository, never()).save(any(UserProfile.class));
+        verify(repository, never()).existsByAuthUserId(any(UUID.class));
+    }
+
+    @Test
+    void shouldPropagateJnvServiceCommunicationFailure() {
+        UserProfile profile = validProfile(UUID.randomUUID());
+
+        when(jnvServiceClient.getJnvById(profile.getJnvId().toString()))
+                .thenThrow(new JnvServiceClientException(
+                        "Unable to communicate with JNV service"));
+
+        assertThatThrownBy(() -> service.create(profile))
+                .isInstanceOf(JnvServiceClientException.class)
+                .hasMessage("Unable to communicate with JNV service");
+
+        verify(repository, never()).save(any(UserProfile.class));
+        verify(repository, never()).existsByAuthUserId(any(UUID.class));
     }
 
     @Test
@@ -130,7 +180,6 @@ class UserProfileServiceTest {
     @Test
     void shouldThrowWhenProfileDoesNotExist() {
         UUID profileId = UUID.randomUUID();
-
         when(repository.findById(profileId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.getById(profileId))

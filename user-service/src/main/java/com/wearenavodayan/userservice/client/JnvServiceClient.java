@@ -1,8 +1,11 @@
 package com.wearenavodayan.userservice.client;
 
 import com.wearenavodayan.userservice.dto.response.ApiResponse;
+import com.wearenavodayan.userservice.exception.JnvNotFoundException;
 import com.wearenavodayan.userservice.exception.JnvServiceClientException;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -11,24 +14,31 @@ import org.springframework.web.client.RestClientException;
 @Component
 public class JnvServiceClient {
 
+    private static final ParameterizedTypeReference<ApiResponse<Object>>
+            RESPONSE_TYPE = new ParameterizedTypeReference<>() {};
+
     private final RestClient restClient;
     private final String baseUrl;
 
     public JnvServiceClient(
             RestClient restClient,
             @Value("${services.jnv.base-url}") String baseUrl) {
-
         this.restClient = restClient;
         this.baseUrl = baseUrl;
     }
 
     public ApiResponse<Object> getJnvById(String jnvId) {
-
         try {
             return restClient
                     .get()
                     .uri(baseUrl + "/api/v1/jnvs/" + jnvId)
                     .retrieve()
+                    .onStatus(
+                            status -> status.value() == HttpStatus.NOT_FOUND.value(),
+                            (request, response) -> {
+                                throw new JnvNotFoundException(
+                                        "JNV not found: " + jnvId);
+                            })
                     .onStatus(
                             HttpStatusCode::is4xxClientError,
                             (request, response) -> {
@@ -43,9 +53,8 @@ public class JnvServiceClient {
                                         "JNV service returned server error: "
                                                 + response.getStatusCode());
                             })
-                    .body(ApiResponse.class);
-
-        } catch (JnvServiceClientException ex) {
+                    .body(RESPONSE_TYPE);
+        } catch (JnvNotFoundException | JnvServiceClientException ex) {
             throw ex;
         } catch (RestClientException ex) {
             throw new JnvServiceClientException(

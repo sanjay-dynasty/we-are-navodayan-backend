@@ -1,5 +1,6 @@
 package com.wearenavodayan.userservice;
 
+import com.wearenavodayan.userservice.client.JnvServiceClient;
 import com.wearenavodayan.userservice.entity.UserProfile;
 import com.wearenavodayan.userservice.repository.UserProfileRepository;
 import com.wearenavodayan.userservice.service.UserProfileService;
@@ -9,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.AnnotationTransactionAttributeSource;
 import org.springframework.transaction.interceptor.TransactionAttribute;
 
@@ -19,100 +21,106 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
 @SpringBootTest
 @ActiveProfiles("local")
 class UserProfileTransactionTests {
 
-    @Autowired
-    private UserProfileService userProfileService;
+        @Autowired
+        private UserProfileService userProfileService;
 
-    @Autowired
-    private UserProfileRepository userProfileRepository;
+        @Autowired
+        private UserProfileRepository userProfileRepository;
 
-    private final List<UUID> createdAuthUserIds = new ArrayList<>();
+        @MockitoBean
+        private JnvServiceClient jnvServiceClient;
 
-    @AfterEach
-    void cleanUp() {
-        createdAuthUserIds.forEach(authUserId ->
-                userProfileRepository.findByAuthUserId(authUserId)
-                        .ifPresent(userProfileRepository::delete));
-    }
+        private final List<UUID> createdAuthUserIds = new ArrayList<>();
 
-    @Test
-    void shouldCreateAndRetrieveProfileThroughService() {
-        UUID authUserId = UUID.randomUUID();
-        UserProfile saved =
-                userProfileService.create(createProfile(authUserId));
+        @AfterEach
+        void cleanUp() {
+                createdAuthUserIds.forEach(authUserId -> userProfileRepository.findByAuthUserId(authUserId)
+                                .ifPresent(userProfileRepository::delete));
+        }
 
-        assertThat(saved.getId()).isNotNull();
-        assertThat(userProfileService.getById(saved.getId()).getFullName())
-                .isEqualTo("Test Navodayan");
-        assertThat(userProfileService.getByAuthUserId(authUserId).getId())
-                .isEqualTo(saved.getId());
-        assertThat(userProfileService.existsByAuthUserId(authUserId))
-                .isTrue();
-    }
+        @Test
+        void shouldCreateAndRetrieveProfileThroughService() {
+                mockValidJnv();
 
-    @Test
-    void shouldUpdateAndDeleteProfileThroughService() {
-        UUID authUserId = UUID.randomUUID();
-        UserProfile saved =
-                userProfileService.create(createProfile(authUserId));
+                UUID authUserId = UUID.randomUUID();
+                UserProfile saved = userProfileService.create(createProfile(authUserId));
 
-        UserProfile changes = createProfile(authUserId);
-        changes.setFullName("Updated Navodayan");
+                assertThat(saved.getId()).isNotNull();
+                assertThat(userProfileService.getById(saved.getId()).getFullName())
+                                .isEqualTo("Test Navodayan");
+                assertThat(userProfileService.getByAuthUserId(authUserId).getId())
+                                .isEqualTo(saved.getId());
+                assertThat(userProfileService.existsByAuthUserId(authUserId))
+                                .isTrue();
+        }
 
-        UserProfile updated =
-                userProfileService.update(saved.getId(), changes);
+        @Test
+        void shouldUpdateAndDeleteProfileThroughService() {
+                mockValidJnv();
 
-        assertThat(updated.getFullName()).isEqualTo("Updated Navodayan");
+                UUID authUserId = UUID.randomUUID();
+                UserProfile saved = userProfileService.create(createProfile(authUserId));
 
-        userProfileService.delete(saved.getId());
+                UserProfile changes = createProfile(authUserId);
+                changes.setFullName("Updated Navodayan");
 
-        assertThatThrownBy(
-                () -> userProfileService.getById(saved.getId()))
-                .isInstanceOf(EntityNotFoundException.class);
-    }
+                UserProfile updated = userProfileService.update(saved.getId(), changes);
 
-    @Test
-    void shouldDeclareReadOnlyTransactionsForReadMethods()
-            throws NoSuchMethodException {
-        AnnotationTransactionAttributeSource source =
-                new AnnotationTransactionAttributeSource();
+                assertThat(updated.getFullName()).isEqualTo("Updated Navodayan");
 
-        Method readMethod =
-                UserProfileService.class.getMethod("getById", UUID.class);
-        TransactionAttribute readAttribute =
-                source.getTransactionAttribute(
-                        readMethod, UserProfileService.class);
+                userProfileService.delete(saved.getId());
 
-        Method writeMethod =
-                UserProfileService.class.getMethod(
-                        "create", UserProfile.class);
-        TransactionAttribute writeAttribute =
-                source.getTransactionAttribute(
-                        writeMethod, UserProfileService.class);
+                assertThatThrownBy(
+                                () -> userProfileService.getById(saved.getId()))
+                                .isInstanceOf(EntityNotFoundException.class);
+        }
 
-        assertThat(readAttribute).isNotNull();
-        assertThat(readAttribute.isReadOnly()).isTrue();
+        @Test
+        void shouldDeclareReadOnlyTransactionsForReadMethods()
+                        throws NoSuchMethodException {
+                AnnotationTransactionAttributeSource source = new AnnotationTransactionAttributeSource();
 
-        assertThat(writeAttribute).isNotNull();
-        assertThat(writeAttribute.isReadOnly()).isFalse();
-    }
+                Method readMethod = UserProfileService.class.getMethod("getById", UUID.class);
+                TransactionAttribute readAttribute = source.getTransactionAttribute(
+                                readMethod, UserProfileService.class);
 
-    private UserProfile createProfile(UUID authUserId) {
-        createdAuthUserIds.add(authUserId);
+                Method writeMethod = UserProfileService.class.getMethod(
+                                "create", UserProfile.class);
+                TransactionAttribute writeAttribute = source.getTransactionAttribute(
+                                writeMethod, UserProfileService.class);
 
-        UserProfile profile = new UserProfile();
-        profile.setAuthUserId(authUserId);
-        profile.setFullName("Test Navodayan");
-        profile.setBio("Transaction integration test");
-        profile.setBatchYear(2018);
-        profile.setJnvId(UUID.randomUUID());
-        profile.setProfileImageUrl(
-                "https://example.com/test-profile.jpg");
+                assertThat(readAttribute).isNotNull();
+                assertThat(readAttribute.isReadOnly()).isTrue();
 
-        return profile;
-    }
+                assertThat(writeAttribute).isNotNull();
+                assertThat(writeAttribute.isReadOnly()).isFalse();
+        }
+
+        private void mockValidJnv() {
+                when(jnvServiceClient.getJnvById(anyString()))
+                                .thenReturn(new com.wearenavodayan.userservice.dto.response.ApiResponse<>(
+                                                true, null, "JNV found"));
+        }
+
+        private UserProfile createProfile(UUID authUserId) {
+                createdAuthUserIds.add(authUserId);
+
+                UserProfile profile = new UserProfile();
+                profile.setAuthUserId(authUserId);
+                profile.setFullName("Test Navodayan");
+                profile.setBio("Transaction integration test");
+                profile.setBatchYear(2018);
+                profile.setJnvId(UUID.randomUUID());
+                profile.setProfileImageUrl(
+                                "https://example.com/test-profile.jpg");
+
+                return profile;
+        }
 }
