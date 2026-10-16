@@ -25,12 +25,12 @@ class ApiGatewayApplicationTests {
     }
 
     @Test
-    void shouldConfigureAuthUserAndJnvRoutes() {
+    void shouldConfigureAuthUserJnvAndUserProfileRoutes() {
         Map<String, RouteProperties> routes = gatewayMvcProperties.getRoutes()
                 .stream()
                 .collect(Collectors.toMap(RouteProperties::getId, route -> route));
 
-        assertEquals(3, routes.size());
+        assertEquals(4, routes.size());
 
         assertRoute(routes, "auth-service-route",
                 "http://localhost:8081", "/api/v1/auth/**");
@@ -40,6 +40,9 @@ class ApiGatewayApplicationTests {
 
         assertRoute(routes, "jnv-service-route",
                 "http://localhost:8083", "/api/v1/jnvs/**");
+
+        assertRoute(routes, "user-profile-service-route",
+                "http://localhost:8082", "/api/v1/user-profiles/**");
     }
 
     private void assertRoute(
