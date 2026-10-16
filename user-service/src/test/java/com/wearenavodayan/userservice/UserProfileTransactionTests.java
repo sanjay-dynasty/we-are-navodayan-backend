@@ -4,6 +4,7 @@ import com.wearenavodayan.userservice.client.JnvServiceClient;
 import com.wearenavodayan.userservice.entity.UserProfile;
 import com.wearenavodayan.userservice.repository.UserProfileRepository;
 import com.wearenavodayan.userservice.service.UserProfileService;
+import com.wearenavodayan.userservice.service.UserProfileSkillsInterestsService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,9 @@ class UserProfileTransactionTests {
 
         @Autowired
         private UserProfileRepository userProfileRepository;
+
+        @Autowired
+        private UserProfileSkillsInterestsService skillsInterestsService;
 
         @MockitoBean
         private JnvServiceClient jnvServiceClient;
@@ -107,6 +111,29 @@ class UserProfileTransactionTests {
                 assertThat(retrieved.getCountry()).isEqualTo("India");
         }
 
+        @Test
+        void shouldPersistAndRetrieveSkillsAndInterests() {
+                mockValidJnv();
+
+                UUID authUserId = UUID.randomUUID();
+                userProfileService.create(createProfile(authUserId));
+
+                List<String> savedSkills = skillsInterestsService.replaceSkills(
+                                authUserId, List.of("Java", "Spring Boot", "AWS"));
+
+                List<String> savedInterests = skillsInterestsService.replaceInterests(
+                                authUserId, List.of("Reading", "Travel"));
+
+                assertThat(savedSkills)
+                                .containsExactly("Java", "Spring Boot", "AWS");
+                assertThat(savedInterests)
+                                .containsExactly("Reading", "Travel");
+
+                assertThat(skillsInterestsService.getSkills(authUserId))
+                                .containsExactly("AWS", "Java", "Spring Boot");
+                assertThat(skillsInterestsService.getInterests(authUserId))
+                                .containsExactly("Reading", "Travel");
+        }
         @Test
         void shouldDeclareReadOnlyTransactionsForReadMethods()
                         throws NoSuchMethodException {
