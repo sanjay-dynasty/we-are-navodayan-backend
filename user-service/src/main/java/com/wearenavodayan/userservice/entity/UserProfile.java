@@ -56,6 +56,21 @@ public class UserProfile {
     @Column(length = 100)
     private String country;
 
+    @Column(name = "profile_image_storage_key", length = 500)
+    private String profileImageStorageKey;
+
+    @Column(name = "profile_image_content_type", length = 100)
+    private String profileImageContentType;
+
+    @Column(name = "profile_image_size_bytes")
+    private Long profileImageSizeBytes;
+
+    @Column(name = "profile_image_original_filename", length = 255)
+    private String profileImageOriginalFilename;
+
+    @Column(name = "profile_image_updated_at")
+    private Instant profileImageUpdatedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -175,6 +190,46 @@ public class UserProfile {
 
     public void setCountry(String country) {
         this.country = country;
+    }
+
+    public String getProfileImageStorageKey() {
+        return profileImageStorageKey;
+    }
+
+    public void setProfileImageStorageKey(String profileImageStorageKey) {
+        this.profileImageStorageKey = profileImageStorageKey;
+    }
+
+    public String getProfileImageContentType() {
+        return profileImageContentType;
+    }
+
+    public void setProfileImageContentType(String profileImageContentType) {
+        this.profileImageContentType = profileImageContentType;
+    }
+
+    public Long getProfileImageSizeBytes() {
+        return profileImageSizeBytes;
+    }
+
+    public void setProfileImageSizeBytes(Long profileImageSizeBytes) {
+        this.profileImageSizeBytes = profileImageSizeBytes;
+    }
+
+    public String getProfileImageOriginalFilename() {
+        return profileImageOriginalFilename;
+    }
+
+    public void setProfileImageOriginalFilename(String profileImageOriginalFilename) {
+        this.profileImageOriginalFilename = profileImageOriginalFilename;
+    }
+
+    public Instant getProfileImageUpdatedAt() {
+        return profileImageUpdatedAt;
+    }
+
+    public void setProfileImageUpdatedAt(Instant profileImageUpdatedAt) {
+        this.profileImageUpdatedAt = profileImageUpdatedAt;
     }
 
     public Instant getCreatedAt() {
