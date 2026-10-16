@@ -47,6 +47,19 @@ class UserServiceJwtSecurityIntegrationTests {
     }
 
     @Test
+    void shouldRejectInternalProfileRequestWithoutServiceKey() throws Exception {
+        HttpResponse<String> response = postInternalProfile(null);
+
+        assertThat(response.statusCode()).isEqualTo(401);
+    }
+
+    @Test
+    void shouldRejectInternalProfileRequestWithInvalidServiceKey() throws Exception {
+        HttpResponse<String> response = postInternalProfile("incorrect-test-key");
+
+        assertThat(response.statusCode()).isEqualTo(401);
+    }
+    @Test
     void shouldRejectRequestWithoutJwt() throws Exception {
         HttpResponse<String> response = get("/api/v1/security-test", null);
 
@@ -157,5 +170,30 @@ class UserServiceJwtSecurityIntegrationTests {
         jwt.sign(new MACSigner(signingSecret));
 
         return jwt.serialize();
+    }
+
+    private HttpResponse<String> postInternalProfile(String serviceKey)
+            throws Exception {
+        String body = """
+                {
+                  "authUserId": "%s",
+                  "fullName": "Test Navodayan"
+                }
+                """.formatted(UUID.randomUUID());
+
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(
+                        "http://localhost:" + port
+                                + "/internal/api/v1/user-profiles"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body));
+
+        if (serviceKey != null) {
+            builder.header("X-Internal-Service-Key", serviceKey);
+        }
+
+        return HTTP_CLIENT.send(
+                builder.build(),
+                HttpResponse.BodyHandlers.ofString());
     }
 }

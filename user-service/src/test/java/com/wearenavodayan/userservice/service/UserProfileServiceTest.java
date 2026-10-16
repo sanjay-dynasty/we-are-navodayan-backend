@@ -308,6 +308,32 @@ class UserProfileServiceTest {
         verify(repository).save(existing);
     }
 
+    @Test
+    void shouldRejectMalformedProfileImageUrl() {
+        UserProfile profile = validProfile(UUID.randomUUID());
+        profile.setProfileImageUrl("not-a-valid-url");
+
+        assertThatThrownBy(() -> service.create(profile))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Profile image URL must be a valid HTTP or HTTPS URL");
+
+        verifyNoInteractions(repository);
+        verifyNoInteractions(jnvServiceClient);
+    }
+
+    @Test
+    void shouldRejectUnsupportedProfileImageUrlScheme() {
+        UserProfile profile = validProfile(UUID.randomUUID());
+        profile.setProfileImageUrl("javascript:alert(1)");
+
+        assertThatThrownBy(() -> service.create(profile))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Profile image URL must be a valid HTTP or HTTPS URL");
+
+        verifyNoInteractions(repository);
+        verifyNoInteractions(jnvServiceClient);
+    }
+
     private UserProfile validProfile(UUID authUserId) {
         UserProfile profile = new UserProfile();
         profile.setAuthUserId(authUserId);

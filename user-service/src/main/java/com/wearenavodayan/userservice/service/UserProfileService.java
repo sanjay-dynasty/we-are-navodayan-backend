@@ -136,6 +136,7 @@ public class UserProfileService {
         validateOptionalText(profile.getBio(), 1000, "Bio");
         validateOptionalText(
                 profile.getProfileImageUrl(), 1000, "Profile image URL");
+        validateProfileImageUrl(profile.getProfileImageUrl());
         validateOptionalText(profile.getProfession(), 100, "Profession");
         validateOptionalText(profile.getOrganization(), 150, "Organization");
         validateOptionalText(profile.getJobTitle(), 150, "Job title");
@@ -183,6 +184,34 @@ public class UserProfileService {
     private void validateOptionalText(
             String value, int maxLength, String fieldName) {
         validateRequiredText(value, maxLength, fieldName, false);
+    }
+
+    private void validateProfileImageUrl(String value) {
+        if (value == null || value.isBlank()) {
+            return;
+        }
+
+        try {
+            java.net.URI uri = java.net.URI.create(value.trim());
+            String scheme = uri.getScheme();
+
+            if (scheme == null
+                    || !(scheme.equalsIgnoreCase("http")
+                    || scheme.equalsIgnoreCase("https"))
+                    || uri.getHost() == null
+                    || uri.getHost().isBlank()) {
+                throw new IllegalArgumentException(
+                        "Profile image URL must be a valid HTTP or HTTPS URL");
+            }
+        } catch (IllegalArgumentException ex) {
+            if ("Profile image URL must be a valid HTTP or HTTPS URL"
+                    .equals(ex.getMessage())) {
+                throw ex;
+            }
+
+            throw new IllegalArgumentException(
+                    "Profile image URL must be a valid HTTP or HTTPS URL");
+        }
     }
 
     private void normalizeProfile(UserProfile profile) {
