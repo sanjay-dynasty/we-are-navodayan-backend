@@ -41,6 +41,11 @@ public class JnvService {
         return jnvRepository.findAll();
     }
 
+    public List<Jnv> getActiveJnvs() {
+        return jnvRepository
+                .findByActiveTrueOrderByStateAscDistrictAscSchoolNameAsc();
+    }
+
     @Transactional
     public Jnv update(UUID id, Jnv updatedJnv) {
         Jnv existingJnv = getById(id);

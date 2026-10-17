@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -18,6 +19,20 @@ public class JnvController {
 
     public JnvController(JnvService jnvService) {
         this.jnvService = jnvService;
+    }
+
+    @GetMapping
+    public ApiResponse<List<JnvResponse>> getAllActive() {
+        List<JnvResponse> responses = jnvService.getActiveJnvs()
+                .stream()
+                .map(JnvResponse::from)
+                .toList();
+
+        return new ApiResponse<>(
+                true,
+                responses,
+                "Active JNVs retrieved successfully"
+        );
     }
 
     @GetMapping("/{jnvId}")
